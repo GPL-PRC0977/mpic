@@ -46,7 +46,7 @@
         <a href="{{ url_for('history') }}" class="nav-link flex h-10 items-center gap-2 rounded-lg px-3"><span class="nav-icon flex h-7 w-7 items-center justify-center"><i data-lucide="history" class="h-4 w-4"></i></span><span class="nav-copy">Count History</span></a>
       </nav>
       <div class="top-status ml-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold">
-        <span class="h-2 w-2 rounded-full bg-green-500"></span><span>Count in progress</span><span class="text-green-700/60">•</span><span class="font-medium">Nov 2026</span>
+        <span class="h-2 w-2 rounded-full bg-green-500"></span><span>Count in progress</span><span class="text-green-700/60">•</span><span id="count-period" class="font-medium">{{ active_count.period }}</span>
       </div>
     </div>
   </aside>
@@ -56,11 +56,12 @@
       <div>
         <p class="text-base font-medium text-slate-700">Physical Inventory Count</p>
         <div class="mt-0.5 flex flex-wrap items-center gap-4">
-          <h1 class="text-[29px] font-extrabold leading-tight tracking-tight text-ink sm:text-[36px]">November 2026 Physical Count</h1>
+          <h1 id="count-title" class="text-[29px] font-extrabold leading-tight tracking-tight text-ink sm:text-[36px]">{{ active_count.name }}</h1>
           <span class="rounded-xl bg-gradient-to-r from-green-700 to-green-600 px-4 py-2 text-base font-bold text-white shadow-sm">In progress</span>
         </div>
       </div>
       <div class="flex items-center gap-3 pt-1">
+        <button id="new-mpic-button" class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#115be8] to-[#0e50df] px-4 py-2.5 text-sm font-bold text-white shadow-md hover:brightness-110"><i data-lucide="plus" class="h-5 w-5"></i>New MPIC</button>
         <button id="sync-button" class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold shadow-sm hover:bg-slate-50"><i data-lucide="cloud-upload" class="h-5 w-5"></i><span id="sync-status">Syncing…</span></button>
         <button class="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-bold shadow-sm hover:bg-slate-50"><i data-lucide="users-round" class="h-5 w-5"></i> Counters (6)</button>
         <button aria-label="More options" class="rounded-lg border border-slate-300 bg-white p-2.5 shadow-sm hover:bg-slate-50"><i data-lucide="ellipsis" class="h-5 w-5"></i></button>
@@ -119,11 +120,13 @@
     const searchInput = document.getElementById('search-input');
     const formatNumber = new Intl.NumberFormat('en-US');
     const serverState = {{ initial_state|tojson }};
-    serverState.lastScan = {
-      barcode: serverState.barcodes[0].barcode,
-      count: serverState.barcodes[0].count,
-      scanned_at: serverState.barcodes[0].scanned_at,
-    };
+    if (serverState.barcodes[0]) {
+      serverState.lastScan = {
+        barcode: serverState.barcodes[0].barcode,
+        count: serverState.barcodes[0].count,
+        scanned_at: serverState.barcodes[0].scanned_at,
+      };
+    }
     let dashboardState = JSON.parse(JSON.stringify(serverState));
     let syncing = false;
     let deductMode = false;
@@ -168,6 +171,15 @@
       });
     }
 
+    async function clearStore(storeName) {
+      const database = await openDatabase();
+      return new Promise((resolve, reject) => {
+        const request = database.transaction(storeName, 'readwrite').objectStore(storeName).clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
     function validateBarcode(value) {
       const barcode = value.trim();
       if (!barcode) return { ok: false, message: 'Scan or enter a barcode first.' };
@@ -208,9 +220,9 @@
 
     function renderDashboard() {
       const lastScan = dashboardState.lastScan;
-      document.getElementById('last-barcode').textContent = lastScan.barcode;
-      document.getElementById('last-count').textContent = lastScan.count;
-      document.getElementById('last-time').textContent = lastScan.scanned_at;
+      document.getElementById('last-barcode').textContent = lastScan ? lastScan.barcode : 'No scans yet';
+      document.getElementById('last-count').textContent = lastScan ? lastScan.count : '0';
+      document.getElementById('last-time').textContent = lastScan ? lastScan.scanned_at : 'Waiting for first scan';
       document.getElementById('unique-count').textContent = formatNumber.format(dashboardState.metrics.unique);
       document.getElementById('total-count').textContent = formatNumber.format(dashboardState.metrics.total);
       document.getElementById('deducted-count').textContent = formatNumber.format(dashboardState.metrics.deducted || 0);
@@ -296,6 +308,49 @@
       }
     }
 
+    async function startNewMpic() {
+      const alert = document.getElementById('scan-alert');
+      const unsynced = (await getAllScans()).filter((scan) => scan.status !== 'synced');
+      if (unsynced.length) {
+        alert.classList.add('text-red-700');
+        document.getElementById('alert-text').textContent = `Sync or resolve ${unsynced.length} queued scan${unsynced.length === 1 ? '' : 's'} before starting a new MPIC`;
+        return;
+      }
+      if (!navigator.onLine) {
+        alert.classList.add('text-red-700');
+        document.getElementById('alert-text').textContent = 'Connect to the internet before starting a new MPIC';
+        return;
+      }
+      const button = document.getElementById('new-mpic-button');
+      button.disabled = true;
+      button.classList.add('opacity-60');
+      try {
+        const response = await fetch('/api/mpic/new', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metrics: dashboardState.metrics }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to start a new MPIC.');
+        dashboardState = result.state;
+        await clearStore(SCAN_STORE);
+        await writeToStore(META_STORE, { key: 'dashboard-state', value: dashboardState });
+        document.getElementById('count-title').textContent = result.active_count.name;
+        document.getElementById('count-period').textContent = result.active_count.period;
+        document.getElementById('barcode-input').value = '';
+        setDeductMode(false);
+        alert.classList.remove('text-red-700');
+        document.getElementById('alert-text').textContent = 'New MPIC started • ready to scan';
+        renderDashboard();
+        await refreshSyncStatus();
+      } catch (error) {
+        alert.classList.add('text-red-700');
+        document.getElementById('alert-text').textContent = error.message;
+      } finally {
+        button.disabled = false;
+        button.classList.remove('opacity-60');
+      }
+    }
+
     document.getElementById('scan-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       const input = document.getElementById('barcode-input');
@@ -334,6 +389,7 @@
     }
 
     searchInput.addEventListener('input', applySearch);
+    document.getElementById('new-mpic-button').addEventListener('click', startNewMpic);
     document.getElementById('sync-button').addEventListener('click', syncPendingScans);
     document.getElementById('deduct-toggle').addEventListener('change', (event) => setDeductMode(event.target.checked));
     window.addEventListener('online', syncPendingScans);

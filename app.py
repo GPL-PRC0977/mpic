@@ -30,6 +30,8 @@ count_history = [
     {"name": "August 2026 Physical Count", "period": "Aug 19–23, 2026", "status": "Completed", "unique": "1,954", "scans": "3,721", "counters": 6, "updated": "Completed Aug 23, 2026"},
     {"name": "July 2026 Physical Count", "period": "Jul 15–19, 2026", "status": "Completed", "unique": "1,889", "scans": "3,510", "counters": 6, "updated": "Completed Jul 19, 2026"},
 ]
+active_count = {"name": "November 2026 Physical Count", "period": "Nov 2026"}
+active_metrics = {"unique": 1670, "total": 3284, "today": 482}
 processed_scan_ids = set()
 deducted_count = 0
 
@@ -46,19 +48,29 @@ def display_scan_time(timestamp):
         return datetime.now().strftime("%b %d, %Y %I:%M:%S %p")
 
 
-@app.get("/")
-def dashboard():
-    initial_state = {
+def build_dashboard_state():
+    return {
         "barcodes": barcodes,
         "activity": activity,
-        "metrics": {"unique": 1670, "total": 3284, "today": 482, "deducted": deducted_count},
+        "lastScan": None,
+        "metrics": {**active_metrics, "deducted": deducted_count},
     }
-    return render_template("index.html", barcodes=barcodes, activity=activity, initial_state=initial_state)
+
+
+@app.get("/")
+def dashboard():
+    return render_template(
+        "index.html",
+        barcodes=barcodes,
+        activity=activity,
+        active_count=active_count,
+        initial_state=build_dashboard_state(),
+    )
 
 
 @app.get("/history")
 def history():
-    return render_template("history.html", count_history=count_history)
+    return render_template("history.html", count_history=count_history, active_count=active_count)
 
 
 @app.get("/healthz")
@@ -73,6 +85,45 @@ def service_worker():
     response.headers["Cache-Control"] = "no-cache"
     response.headers["Service-Worker-Allowed"] = "/"
     return response
+
+
+@app.post("/api/mpic/new")
+def start_new_mpic():
+    """Archive the active prototype count and start a new empty MPIC."""
+    global deducted_count, active_metrics
+    payload = request.get_json(silent=True) or {}
+    metrics = payload.get("metrics", {})
+    active_metrics = {
+        "unique": int(metrics.get("unique", active_metrics["unique"])),
+        "total": int(metrics.get("total", active_metrics["total"])),
+        "today": int(metrics.get("today", active_metrics["today"])),
+    }
+    now = datetime.now()
+    active_history = next((item for item in count_history if item["status"] == "In progress"), None)
+    if active_history:
+        active_history.update({
+            "status": "Completed",
+            "unique": f"{int(metrics.get('unique', 0)):,}",
+            "scans": f"{int(metrics.get('total', 0)):,}",
+            "updated": f"Completed {now.strftime('%b %d, %Y')}",
+        })
+
+    active_count.update({"name": "New MPIC", "period": now.strftime("%b %Y")})
+    count_history.insert(0, {
+        "name": active_count["name"],
+        "period": now.strftime("Started %b %d, %Y"),
+        "status": "In progress",
+        "unique": "0",
+        "scans": "0",
+        "counters": 6,
+        "updated": "Updated just now",
+    })
+    barcodes.clear()
+    activity.clear()
+    processed_scan_ids.clear()
+    deducted_count = 0
+    active_metrics = {"unique": 0, "total": 0, "today": 0}
+    return jsonify({"ok": True, "active_count": active_count, "state": build_dashboard_state()})
 
 
 @app.post("/api/scans/sync")
@@ -120,10 +171,13 @@ def sync_scans():
         else:
             found = {"barcode": barcode, "count": 1, "scanned_at": scanned_at, "counter": counter}
             barcodes.insert(0, found)
+            active_metrics["unique"] += 1
         activity.insert(0, {"barcode": barcode, "count": found["count"], "delta": delta, "time": scanned_at.split()[-2] + " " + scanned_at.split()[-1]})
         del activity[8:]
         if delta == -1:
             deducted_count += 1
+        active_metrics["total"] += 1
+        active_metrics["today"] += 1
         processed_scan_ids.add(scan_id)
         acknowledged.append(scan_id)
 

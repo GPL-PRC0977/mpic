@@ -38,7 +38,7 @@
         <a href="{{ url_for('dashboard') }}" class="nav-link flex h-10 items-center gap-2 rounded-lg px-3"><span class="nav-icon flex h-7 w-7 items-center justify-center"><i data-lucide="barcode" class="h-4 w-4"></i></span><span class="nav-copy">Physical Count</span></a>
         <a href="{{ url_for('history') }}" aria-current="page" class="nav-link active-nav flex h-10 items-center gap-2 rounded-lg px-3"><span class="nav-icon flex h-7 w-7 items-center justify-center"><i data-lucide="history" class="h-4 w-4"></i></span><span class="nav-copy">Count History</span></a>
       </nav>
-      <div class="top-status ml-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold"><span class="h-2 w-2 rounded-full bg-green-500"></span><span>Count in progress</span><span class="text-green-700/60">•</span><span class="font-medium">Nov 2026</span></div>
+      <div class="top-status ml-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold"><span class="h-2 w-2 rounded-full bg-green-500"></span><span>Count in progress</span><span class="text-green-700/60">•</span><span class="font-medium">{{ active_count.period }}</span></div>
     </div>
   </aside>
 
