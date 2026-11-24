@@ -92,6 +92,11 @@ def start_new_mpic():
     """Archive the active prototype count and start a new empty MPIC."""
     global deducted_count, active_metrics
     payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name", "")).strip()
+    if not name:
+        return jsonify({"ok": False, "message": "An MPIC name is required."}), 400
+    if len(name) > 100:
+        return jsonify({"ok": False, "message": "MPIC name must be 100 characters or fewer."}), 400
     metrics = payload.get("metrics", {})
     active_metrics = {
         "unique": int(metrics.get("unique", active_metrics["unique"])),
@@ -108,7 +113,7 @@ def start_new_mpic():
             "updated": f"Completed {now.strftime('%b %d, %Y')}",
         })
 
-    active_count.update({"name": "New MPIC", "period": now.strftime("%b %Y")})
+    active_count.update({"name": name, "period": now.strftime("%b %Y")})
     count_history.insert(0, {
         "name": active_count["name"],
         "period": now.strftime("Started %b %d, %Y"),
