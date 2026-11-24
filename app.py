@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from uuid import UUID
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, make_response, render_template, request, send_from_directory
 
 app = Flask(__name__)
 
@@ -64,6 +64,15 @@ def history():
 @app.get("/healthz")
 def health_check():
     return jsonify({"ok": True})
+
+
+@app.get("/sw.js")
+def service_worker():
+    """Serve the worker at the app root so it can control every app route."""
+    response = make_response(send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript"))
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
 
 
 @app.post("/api/scans/sync")

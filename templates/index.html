@@ -348,7 +348,11 @@
       renderDashboard();
       await refreshSyncStatus();
       syncPendingScans();
-      if ('serviceWorker' in navigator) navigator.serviceWorker.register('/static/sw.js');
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.getRegistrations()).then((registrations) => {
+          registrations.filter((registration) => new URL(registration.scope).pathname === '/static/').forEach((registration) => registration.unregister());
+        });
+      }
     })();
   </script>
 </body>
