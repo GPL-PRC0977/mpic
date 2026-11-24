@@ -1,5 +1,10 @@
 const CACHE_NAME = "mpic-inventory-v2";
-const APP_SHELL = ["/", "/history", "/static/manifest.webmanifest"];
+const APP_SHELL = [
+  "/",
+  "/history",
+  "/static/manifest.webmanifest",
+  "/static/primer-logo.png",
+];
 const EXTERNAL_ASSETS = [
   "https://cdn.tailwindcss.com",
   "https://unpkg.com/lucide@latest",
