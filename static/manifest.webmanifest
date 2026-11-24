@@ -1,0 +1,8 @@
+{
+  "name": "MPIC Inventory Count",
+  "short_name": "MPIC Count",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfcff",
+  "theme_color": "#062153"
+}

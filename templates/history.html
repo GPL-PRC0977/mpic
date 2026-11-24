@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Count History</title>
+  <link rel="manifest" href="/static/manifest.webmanifest" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { theme: { extend: { colors: { ink: '#071432', cobalt: '#0f55ed' } } } }</script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; }
+    body { font-family: Inter, Arial, sans-serif; color: #071432; }
+    .topbar { position: relative; background: rgba(255,255,255,.96); border-bottom: 1px solid #e2e8f0; box-shadow: 0 2px 12px rgba(15, 23, 42, .05); }
+    .topbar::before { position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, #0b4194, #0f55ed, #46a2ff); content: ''; }
+    .card { border: 1px solid #ced8e7; border-radius: 14px; background: white; }
+    .nav-link { color: #475569; transition: background .18s ease, color .18s ease; }
+    .nav-link:hover { background: #f1f5f9; color: #0f55ed; }
+    .nav-link:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+    .active-nav { background: #eaf2ff; color: #0f55ed; }
+    .nav-icon { color: currentColor; }
+    .active-nav .nav-icon { border-radius: .5rem; background: #d8e8ff; }
+    .top-status { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; }
+    .metric-icon { color: #0f55ed; stroke-width: 2.5; }
+    .table-head { background: linear-gradient(100deg, #f0f4f9, #e8edf4); }
+    .completed { background: linear-gradient(90deg, #e4f9e7, #c9f1ce); color: #075d1e; }
+    .progress { background: linear-gradient(90deg, #e6efff, #d8e7ff); color: #1550b7; }
+    input:focus { outline: none; }
+    @media (max-width: 640px) { .top-logo img { height: 42px; } .top-nav a { gap: .5rem; padding-left: .75rem; padding-right: .75rem; } .top-nav .nav-copy { display: none; } .top-status { display: none; } }
+  </style>
+</head>
+<body class="min-h-screen bg-[#fbfcff]">
+  <aside class="topbar sticky top-0 z-20">
+    <div class="mx-auto flex min-h-[74px] max-w-[1600px] items-center gap-4 px-4 pt-1 sm:px-5">
+      <div class="top-logo shrink-0 pr-4 sm:border-r sm:border-slate-200"><img src="{{ url_for('static', filename='primer-logo.png') }}" alt="Primer" class="h-[52px] w-auto" /></div>
+      <nav class="top-nav flex items-center gap-2 font-semibold">
+        <a href="{{ url_for('dashboard') }}" class="nav-link flex h-10 items-center gap-2 rounded-lg px-3"><span class="nav-icon flex h-7 w-7 items-center justify-center"><i data-lucide="barcode" class="h-4 w-4"></i></span><span class="nav-copy">Physical Count</span></a>
+        <a href="{{ url_for('history') }}" aria-current="page" class="nav-link active-nav flex h-10 items-center gap-2 rounded-lg px-3"><span class="nav-icon flex h-7 w-7 items-center justify-center"><i data-lucide="history" class="h-4 w-4"></i></span><span class="nav-copy">Count History</span></a>
+      </nav>
+      <div class="top-status ml-auto flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold"><span class="h-2 w-2 rounded-full bg-green-500"></span><span>Count in progress</span><span class="text-green-700/60">•</span><span class="font-medium">Nov 2026</span></div>
+    </div>
+  </aside>
+
+  <main class="app-main mx-auto min-h-screen max-w-[1600px] p-4 sm:p-5">
+    <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div><p class="text-base font-medium text-slate-700">Physical Inventory Count</p><h1 class="mt-0.5 text-[32px] font-extrabold tracking-tight text-ink sm:text-[38px]">Count History</h1><p class="mt-1 text-slate-600">Review completed and active physical inventory counts.</p></div>
+      <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#115be8] to-[#0e50df] px-5 py-2.5 font-bold text-white shadow-md hover:brightness-110"><i data-lucide="barcode" class="h-5 w-5"></i>Open active count</a>
+    </header>
+
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <article class="card flex min-h-[108px] items-center gap-5 p-5"><i data-lucide="clipboard-check" class="metric-icon h-10 w-10"></i><div><p class="font-semibold text-slate-700">Total count sessions</p><p class="text-[40px] font-extrabold leading-none">24</p></div></article>
+      <article class="card flex min-h-[108px] items-center gap-5 p-5"><i data-lucide="barcode" class="metric-icon h-10 w-10"></i><div><p class="font-semibold text-slate-700">Barcodes counted</p><p class="text-[40px] font-extrabold leading-none">46,872</p></div></article>
+      <article class="card flex min-h-[108px] items-center gap-5 p-5"><i data-lucide="scan-line" class="metric-icon h-10 w-10"></i><div><p class="font-semibold text-slate-700">Total scan activity</p><p class="text-[40px] font-extrabold leading-none">89,431</p></div></article>
+    </section>
+
+    <section class="card mt-5 overflow-hidden p-3 sm:p-4">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-[26px] font-extrabold tracking-tight">Inventory count sessions</h2><p class="mt-1 text-sm text-slate-600">Latest count periods are shown first.</p></div><label class="flex h-10 w-full items-center gap-3 rounded-lg border border-slate-400 px-3 sm:w-[330px]"><i data-lucide="search" class="h-5 w-5 text-slate-600"></i><input id="history-search" class="w-full bg-transparent text-slate-700" placeholder="Search count sessions" /></label></div>
+      <div class="overflow-x-auto"><table class="w-full min-w-[800px] border-collapse text-[15px]"><thead class="table-head"><tr class="text-left font-bold text-slate-800"><th class="px-4 py-3">Count session</th><th class="px-4 py-3">Count period</th><th class="px-4 py-3">Unique barcodes</th><th class="px-4 py-3">Total scans</th><th class="px-4 py-3">Counters</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-right"> </th></tr></thead><tbody id="history-table">
+        {% for session in count_history %}<tr class="history-row border-b border-slate-300 font-medium" data-search="{{ session.name|lower }} {{ session.period|lower }} {{ session.status|lower }}"><td class="px-4 py-3"><p class="font-bold">{{ session.name }}</p><p class="mt-0.5 text-xs font-normal text-slate-500">{{ session.updated }}</p></td><td class="px-4 py-3">{{ session.period }}</td><td class="px-4 py-3 font-bold">{{ session.unique }}</td><td class="px-4 py-3 font-bold">{{ session.scans }}</td><td class="px-4 py-3">{{ session.counters }}</td><td class="px-4 py-3"><span class="{{ 'progress' if session.status == 'In progress' else 'completed' }} rounded-full px-3 py-1 text-sm font-bold">{{ session.status }}</span></td><td class="px-4 py-3 text-right"><button class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-cobalt hover:bg-blue-50">View details</button></td></tr>{% endfor %}
+      </tbody></table></div>
+      <p id="no-results" class="hidden px-4 py-8 text-center font-medium text-slate-500">No count sessions match your search.</p>
+    </section>
+  </main>
+  <script>
+    lucide.createIcons();
+    document.getElementById('history-search').addEventListener('input', (event) => {
+      const term = event.target.value.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll('.history-row').forEach((row) => { const match = row.dataset.search.includes(term); row.classList.toggle('hidden', !match); if (match) visible++; });
+      document.getElementById('no-results').classList.toggle('hidden', visible !== 0);
+    });
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/static/sw.js');
+  </script>
+</body>
+</html>
